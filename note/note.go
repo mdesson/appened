@@ -1,6 +1,10 @@
 package note
 
-import "time"
+import (
+	"fmt"
+	"strconv"
+	"time"
+)
 
 // Note is a single item appended to a Folio
 type Note struct {
@@ -29,5 +33,19 @@ func (n *Note) ToggleDone() {
 	n.Done = !n.Done
 	if n.Done {
 		n.DateDone = time.Now().Unix()
+	}
+}
+
+func (n Note) String() string {
+	return fmt.Sprintf("%v,%v,%v,%v,%v", n.Text, n.Done, n.DateCreated, n.DateDone, n.DateEdited)
+}
+
+func (n Note) csvLine() []string {
+	return []string{
+		n.Text,
+		strconv.FormatBool(n.Done),
+		strconv.FormatInt(n.DateCreated, 10),
+		strconv.FormatInt(n.DateDone, 10),
+		strconv.FormatInt(n.DateCreated, 10),
 	}
 }
