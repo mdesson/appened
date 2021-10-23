@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// Folio is a collection of Notes
 type Folio struct {
 	Name     string
 	Notes    []Note
@@ -16,6 +17,7 @@ type Folio struct {
 	mu       *sync.RWMutex
 }
 
+// LoadFolios reads in folios from `data/`
 func LoadFolios() ([]*Folio, error) {
 	// Get file names
 	files, err := os.ReadDir("../data/")
@@ -89,6 +91,7 @@ func parseFolioCSV(filename string) (*Folio, error) {
 	return &folio, nil
 }
 
+// CreateFolio creates a new folio, and writes it to disk
 func CreateFolio(name string) (*Folio, error) {
 	fileName := fmt.Sprintf("../data/%s.csv", name)
 	mu := &sync.RWMutex{}
@@ -104,6 +107,7 @@ func CreateFolio(name string) (*Folio, error) {
 	return f, nil
 }
 
+// Append appends a Note to the Folio and writes it to disk
 func (f *Folio) Append(note string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
