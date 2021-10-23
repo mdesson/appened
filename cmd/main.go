@@ -7,17 +7,9 @@ import (
 )
 
 func main() {
-	f, err := note.CreateFolio("okay")
+	folios, err := note.LoadFolios()
 	if err != nil {
 		fmt.Println(err)
-	} else {
-		fmt.Println("Okay!")
 	}
-	err = f.Append("wow gotta do it!")
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Println("Okay!")
-	}
-	err = f.Append("wow, gotta do it!")
+	fmt.Println(folios)
 }

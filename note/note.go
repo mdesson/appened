@@ -46,6 +46,6 @@ func (n Note) csvLine() []string {
 		strconv.FormatBool(n.Done),
 		strconv.FormatInt(n.DateCreated, 10),
 		strconv.FormatInt(n.DateDone, 10),
-		strconv.FormatInt(n.DateCreated, 10),
+		strconv.FormatInt(n.DateEdited, 10),
 	}
 }
