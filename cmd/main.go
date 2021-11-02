@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"regexp"
+	"strings"
 
 	"github.com/appened/note"
 	"github.com/gorilla/mux"
@@ -26,8 +28,21 @@ func main() {
 
 	r := mux.NewRouter()
 
+	// Set up routes
+	initailizeRoutes(r, folios)
+
+	// Add middleware
+	initailizeMiddleware(r)
+
+	// Start Server
+	fmt.Println("Listening on 8081")
+	http.ListenAndServe(":8081", r)
+}
+
+// Intialize routes
+func initailizeRoutes(router *mux.Router, folios []*note.Folio) {
 	// GET folios/{name}: Get a folio's notes in an array of strings
-	r.HandleFunc("/folios/{name}", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/folios/{name}", func(w http.ResponseWriter, r *http.Request) {
 		name := mux.Vars(r)["name"]
 		fmt.Printf("GET folios/%s\n", name)
 
@@ -53,7 +68,7 @@ func main() {
 	}).Methods("GET")
 
 	// POST folios/{name}: Append a note to a folio
-	r.HandleFunc("/folios/{name}", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/folios/{name}", func(w http.ResponseWriter, r *http.Request) {
 		name := mux.Vars(r)["name"]
 		fmt.Printf("POST folios/%s\n", name)
 
@@ -69,7 +84,7 @@ func main() {
 			return
 		}
 
-		err = folio.Append(r.FormValue("note"))
+		err := folio.Append(r.FormValue("note"))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Println(err)
@@ -81,7 +96,7 @@ func main() {
 	}).Methods("POST")
 
 	// POST folios/: Create a folio
-	r.HandleFunc("/folios", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/folios", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("POST folios/")
 		// Get folio name from request
 		if err := r.ParseForm(); err != nil {
@@ -124,10 +139,33 @@ func main() {
 
 		w.WriteHeader(http.StatusCreated)
 	}).Methods("POST")
+}
 
-	// Start Server
-	fmt.Println("Listening on 8081")
-	http.ListenAndServe(":8081", r)
+// Initializes Application Middleware
+func initailizeMiddleware(router *mux.Router) {
+	// Authentication middleware
+	router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Get app token
+			token := os.Getenv("APPENDED_AUTH_TOKEN")
+
+			// Get client token
+			reqToken := r.Header.Get("Authorization")
+			splitToken := strings.Split(reqToken, "Bearer ")
+
+			// Check if token was provided and if it is valid
+			authorized := len(splitToken) == 2 && splitToken[1] == token
+
+			// Authenticate user
+			if authorized {
+				next.ServeHTTP(w, r)
+			} else {
+				// Reject unauthorized requests
+				fmt.Println("Unauthorized")
+				w.WriteHeader(http.StatusUnauthorized)
+			}
+		})
+	})
 }
 
 // Helper for getting a folio. Runs in O(n) time, converting to a map would obviate need for this
