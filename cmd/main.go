@@ -8,48 +8,51 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/appened/HTTPLogger"
 	"github.com/appened/note"
 	"github.com/gorilla/mux"
 )
 
-// TODO: Add logging
-// TODO: Add authentication
 // TODO: Add marking done
 // TODO: Add editing note
 // TODO: Add surfacing a note
 
 func main() {
-	fmt.Println("Loading folios")
+	// Init Logger
+	flags := HTTPLogger.LOG_DEBUG | HTTPLogger.LOG_ERRORS | HTTPLogger.LOG_INFO | HTTPLogger.LOG_WARNINGS
+	logger := HTTPLogger.New(os.Stdout, flags)
+
+	// Load Folios
+	logger.Info("Loading folios")
 	folios, err := note.LoadFolios()
 	if err != nil {
-		fmt.Println(err)
+		logger.Error(err)
 	}
-	fmt.Printf("Loaded %d folios\n", len(folios))
+	logger.Info(fmt.Sprintf("Loaded %d folios\n", len(folios)))
 
 	r := mux.NewRouter()
 
-	// Set up routes
-	initailizeRoutes(r, folios)
-
 	// Add middleware
-	initailizeMiddleware(r)
+	initailizeMiddleware(r, logger)
+
+	// Set up routes
+	initailizeRoutes(r, logger, folios)
 
 	// Start Server
-	fmt.Println("Listening on 8081")
+	logger.Info("Listening on 8081")
 	http.ListenAndServe(":8081", r)
 }
 
 // Intialize routes
-func initailizeRoutes(router *mux.Router, folios []*note.Folio) {
+func initailizeRoutes(router *mux.Router, logger *HTTPLogger.Logger, folios []*note.Folio) {
 	// GET folios/{name}: Get a folio's notes in an array of strings
 	router.HandleFunc("/folios/{name}", func(w http.ResponseWriter, r *http.Request) {
 		name := mux.Vars(r)["name"]
-		fmt.Printf("GET folios/%s\n", name)
 
 		folio := findFolio(name, folios)
 		if folio == nil {
 			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Folio not found")
+			logger.InfoHTTP(r, http.StatusNotFound)
 			return
 		}
 
@@ -60,47 +63,49 @@ func initailizeRoutes(router *mux.Router, folios []*note.Folio) {
 		jsonResponse, err := json.Marshal(notes)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			logger.ApplicationError(r, err)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(jsonResponse)
+		logger.InfoHTTP(r, http.StatusOK)
 	}).Methods("GET")
 
 	// POST folios/{name}: Append a note to a folio
 	router.HandleFunc("/folios/{name}", func(w http.ResponseWriter, r *http.Request) {
 		name := mux.Vars(r)["name"]
-		fmt.Printf("POST folios/%s\n", name)
 
 		if err := r.ParseForm(); err != nil {
-			fmt.Fprintf(w, "ParseForm() err: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			logger.ApplicationError(r, err)
 			return
 		}
 
 		folio := findFolio(name, folios)
 		if folio == nil {
 			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Folio not found")
+			logger.InfoHTTP(r, http.StatusNotFound)
 			return
 		}
 
 		err := folio.Append(r.FormValue("note"))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Println(err)
+			logger.ApplicationError(r, err)
 			return
 		}
 
-		fmt.Printf("Created note in folio %v\n", name)
 		w.WriteHeader(http.StatusCreated)
+		logger.InfoHTTP(r, http.StatusCreated)
+		logger.Info(fmt.Sprintf("Created note in folio %v\n", name))
 	}).Methods("POST")
 
 	// POST folios/: Create a folio
 	router.HandleFunc("/folios", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("POST folios/")
 		// Get folio name from request
 		if err := r.ParseForm(); err != nil {
-			fmt.Fprintf(w, "ParseForm() err: %v", err)
+			logger.ApplicationError(r, err)
 			return
 		}
 		name := r.FormValue("name")
@@ -108,21 +113,21 @@ func initailizeRoutes(router *mux.Router, folios []*note.Folio) {
 		// Validation
 		matched, err := regexp.MatchString(`^[a-zA-Z]+$`, name)
 		if err != nil {
-			fmt.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
+			logger.ApplicationError(r, err)
 			return
 		}
 		if !matched {
-			fmt.Printf("Bad folio name: %s\n", name)
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprintf(w, "Invalid folio name, must be one word")
+			logger.InfoHTTP(r, http.StatusBadRequest)
 			return
 		}
 		for _, f := range folios {
 			if f.Name == name {
-				fmt.Printf("Duplicate folio name: %s\n", name)
 				w.WriteHeader(http.StatusBadRequest)
 				fmt.Fprintf(w, "Folio with name exists, try a different name")
+				logger.InfoHTTP(r, http.StatusBadRequest)
 				return
 			}
 		}
@@ -130,19 +135,27 @@ func initailizeRoutes(router *mux.Router, folios []*note.Folio) {
 		// Create New Folio
 		folio, err := note.CreateFolio(name)
 		if err != nil {
-			fmt.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
+			logger.ApplicationError(r, err)
 			return
 		}
 		folios = append(folios, folio)
-		fmt.Printf("Created folio named %v\n", name)
 
 		w.WriteHeader(http.StatusCreated)
+		logger.InfoHTTP(r, http.StatusCreated)
+		logger.Info(fmt.Sprintf("Created folio named %v\n", name))
 	}).Methods("POST")
+
+	// Manually reset 404 middleware will not fire. Custom 404 also ensures logging
+	router.NotFoundHandler = router.NewRoute().HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		logger.InfoHTTP(r, http.StatusNotFound)
+	}).GetHandler()
+
 }
 
 // Initializes Application Middleware
-func initailizeMiddleware(router *mux.Router) {
+func initailizeMiddleware(router *mux.Router, logger *HTTPLogger.Logger) {
 	// Authentication middleware
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -161,8 +174,8 @@ func initailizeMiddleware(router *mux.Router) {
 				next.ServeHTTP(w, r)
 			} else {
 				// Reject unauthorized requests
-				fmt.Println("Unauthorized")
 				w.WriteHeader(http.StatusUnauthorized)
+				logger.InfoHTTP(r, http.StatusUnauthorized)
 			}
 		})
 	})
