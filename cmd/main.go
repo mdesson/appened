@@ -19,8 +19,7 @@ import (
 
 func main() {
 	// Init Logger
-	flags := HTTPLogger.LOG_DEBUG | HTTPLogger.LOG_ERRORS | HTTPLogger.LOG_INFO | HTTPLogger.LOG_WARNINGS
-	logger := HTTPLogger.New(os.Stdout, flags)
+	logger := HTTPLogger.New(os.Stdout, HTTPLogger.LOG_ALL)
 
 	// Load Folios
 	logger.Info("Loading folios")

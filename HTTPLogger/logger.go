@@ -12,6 +12,8 @@ const (
 	LOG_INFO
 	LOG_WARNINGS
 	LOG_DEBUG
+	LOG_NONE
+	LOG_ALL = LOG_ERRORS | LOG_INFO | LOG_WARNINGS | LOG_DEBUG
 )
 
 // Logger is a generalized logger to save some boilerplate. It is made using the standard library.
