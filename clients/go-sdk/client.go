@@ -1,37 +1,94 @@
-package goSDK
+package appendedGo
 
 import (
-	"fmt"
+	"encoding/json"
+	"io"
 	"net/http"
+	"net/url"
+	"strings"
 )
 
 type Client struct {
 	token  string
 	client *http.Client
+	url    string
 }
 
-func New(token string) *Client {
+func New(token string, baseURL string) *Client {
 
 	client := Client{}
 	client.token = token
 	client.client = &http.Client{}
 
+	if baseURL[len(baseURL)-1:] == "/" {
+		client.url = baseURL[:len(baseURL)-1]
+	} else {
+		client.url = baseURL
+	}
+
 	return &client
 }
 
-func (c *Client) GetNotes(folioName string) ([]string, error) {
-	req, err := http.NewRequest("GET", "localhost:8081", nil)
+func (c *Client) makeRequest(method string, route string, data map[string]string) ([]byte, error) {
+	postData := url.Values{}
+	for key, val := range data {
+		postData.Set(key, val)
+	}
+
+	req, err := http.NewRequest(method, c.url+route, strings.NewReader(postData.Encode()))
 	if err != nil {
 		return nil, err
 	}
+
 	req.Header.Add("Authorization", "Bearer "+c.token)
+	if data != nil {
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	}
+
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
-	fmt.Println("hello!")
-	fmt.Println(resp)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	return body, err
+}
+
+func (c *Client) GetNotes(folioName string) ([]string, error) {
+	body, err := c.makeRequest("GET", "/folios/"+folioName, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	notes := []string{}
+
+	err = json.Unmarshal(body, &notes)
+	if err != nil {
+		return nil, err
+	}
+
+	return notes, nil
+}
+
+func (c *Client) CreateFolio(folioName string) error {
+	_, err := c.makeRequest("POST", "/folios", map[string]string{"name": folioName})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) AddNote(folioName string, note string) error {
+	_, err := c.makeRequest("POST", "/folios/"+folioName, map[string]string{"note": note})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -16,6 +16,7 @@ type Config struct {
 	ClientNumber string `json:"clientNumber"`
 	TwilioNumber string `json:"twilioNumber"`
 	AppenedToken string `json:"appenedToken"`
+	AppenedURL   string `json:"appenedURL"`
 }
 
 func main() {

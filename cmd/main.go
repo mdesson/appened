@@ -108,6 +108,7 @@ func initailizeRoutes(router *mux.Router, logger *HTTPLogger.Logger, folios []*n
 			return
 		}
 		name := r.FormValue("name")
+		logger.Debug(name)
 
 		// Validation
 		matched, err := regexp.MatchString(`^[a-zA-Z]+$`, name)
