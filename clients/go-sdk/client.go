@@ -29,6 +29,56 @@ func New(token string, baseURL string) *Client {
 	return &client
 }
 
+func (c *Client) CreateFolio(folioName string) error {
+	_, err := c.makeRequest("POST", "/folios", map[string]string{"name": folioName})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) GetFolios(folioName string) ([]string, error) {
+	body, err := c.makeRequest("GET", "/folios", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	folioNames := []string{}
+
+	err = json.Unmarshal(body, &folioNames)
+	if err != nil {
+		return nil, err
+	}
+
+	return folioNames, nil
+}
+
+func (c *Client) GetNotes(folioName string) ([]string, error) {
+	body, err := c.makeRequest("GET", "/folios/"+folioName, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	notes := []string{}
+
+	err = json.Unmarshal(body, &notes)
+	if err != nil {
+		return nil, err
+	}
+
+	return notes, nil
+}
+
+func (c *Client) AddNote(folioName string, note string) error {
+	_, err := c.makeRequest("POST", "/folios/"+folioName, map[string]string{"note": note})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c *Client) makeRequest(method string, route string, data map[string]string) ([]byte, error) {
 	postData := url.Values{}
 	for key, val := range data {
@@ -57,38 +107,4 @@ func (c *Client) makeRequest(method string, route string, data map[string]string
 	}
 
 	return body, err
-}
-
-func (c *Client) GetNotes(folioName string) ([]string, error) {
-	body, err := c.makeRequest("GET", "/folios/"+folioName, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	notes := []string{}
-
-	err = json.Unmarshal(body, &notes)
-	if err != nil {
-		return nil, err
-	}
-
-	return notes, nil
-}
-
-func (c *Client) CreateFolio(folioName string) error {
-	_, err := c.makeRequest("POST", "/folios", map[string]string{"name": folioName})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (c *Client) AddNote(folioName string, note string) error {
-	_, err := c.makeRequest("POST", "/folios/"+folioName, map[string]string{"note": note})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
