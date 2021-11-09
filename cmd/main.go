@@ -45,7 +45,7 @@ func main() {
 // Intialize routes
 func initailizeRoutes(router *mux.Router, logger *HTTPLogger.Logger, folios []*note.Folio) {
 	// GET folios/{name}: Get a folio's notes in an array of strings
-	router.HandleFunc("/folios/{name}", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/folios/{name}{slash:/?}", func(w http.ResponseWriter, r *http.Request) {
 		name := mux.Vars(r)["name"]
 
 		folio := findFolio(name, folios)
@@ -71,8 +71,8 @@ func initailizeRoutes(router *mux.Router, logger *HTTPLogger.Logger, folios []*n
 		logger.InfoHTTP(r, http.StatusOK)
 	}).Methods("GET")
 
-	// POST folios/{name}: Append a note to a folio
-	router.HandleFunc("/folios/{name}", func(w http.ResponseWriter, r *http.Request) {
+	// POST folios/{name} Append a note to a folio
+	router.HandleFunc("/folios/{name}{slash:/?}", func(w http.ResponseWriter, r *http.Request) {
 		name := mux.Vars(r)["name"]
 
 		if err := r.ParseForm(); err != nil {
@@ -100,8 +100,8 @@ func initailizeRoutes(router *mux.Router, logger *HTTPLogger.Logger, folios []*n
 		logger.Info(fmt.Sprintf("Created note in folio %v\n", name))
 	}).Methods("POST")
 
-	// POST folios/: Create a folio
-	router.HandleFunc("/folios", func(w http.ResponseWriter, r *http.Request) {
+	// POST folios/ Create a folio
+	router.HandleFunc("/folios{slash:/?}", func(w http.ResponseWriter, r *http.Request) {
 		// Get folio name from request
 		if err := r.ParseForm(); err != nil {
 			logger.ApplicationError(r, err)
@@ -145,6 +145,26 @@ func initailizeRoutes(router *mux.Router, logger *HTTPLogger.Logger, folios []*n
 		logger.InfoHTTP(r, http.StatusCreated)
 		logger.Info(fmt.Sprintf("Created folio named %v\n", name))
 	}).Methods("POST")
+
+	// GET folios/ List all folio names
+	router.HandleFunc("/folios{slash:/?}", func(w http.ResponseWriter, r *http.Request) {
+		folioNames := []string{}
+		for _, folio := range folios {
+			folioNames = append(folioNames, folio.Name)
+		}
+
+		jsonResponse, err := json.Marshal(folioNames)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			logger.ApplicationError(r, err)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(jsonResponse)
+		logger.InfoHTTP(r, http.StatusOK)
+	}).Methods("GET")
 
 	// Manually reset 404 middleware will not fire. Custom 404 also ensures logging
 	router.NotFoundHandler = router.NewRoute().HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
