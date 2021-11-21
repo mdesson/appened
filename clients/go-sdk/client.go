@@ -2,6 +2,7 @@ package appendedGo
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -38,7 +39,7 @@ func (c *Client) CreateFolio(folioName string) error {
 	return nil
 }
 
-func (c *Client) GetFolios(folioName string) ([]string, error) {
+func (c *Client) GetFolios() ([]string, error) {
 	body, err := c.makeRequest("GET", "/folios", nil)
 	if err != nil {
 		return nil, err
@@ -100,6 +101,12 @@ func (c *Client) makeRequest(method string, route string, data map[string]string
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode > 201 {
+		msg := http.StatusText(resp.StatusCode)
+		return nil, errors.New(msg)
+
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

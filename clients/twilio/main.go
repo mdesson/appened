@@ -2,13 +2,22 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
+	"log"
+	"net/http"
+	"net/url"
 	"os"
+	"strings"
 
 	"github.com/appened/HTTPLogger"
+	appendedGo "github.com/appened/clients/go-sdk"
+	"github.com/gorilla/mux"
 	"github.com/twilio/twilio-go"
 	openapi "github.com/twilio/twilio-go/rest/api/v2010"
 )
+
+// TODO: Check that X-Twilio-Signature header to ensure request is authentically from Twilio
 
 type Config struct {
 	AccountSid   string `json:"accountSid"`
@@ -39,20 +48,123 @@ func main() {
 	logger.Info("Loaded config successfully")
 
 	// Init twilio client
-	client := twilio.NewRestClientWithParams(twilio.RestClientParams{
+	twilioClient := twilio.NewRestClientWithParams(twilio.RestClientParams{
 		Username: config.AccountSid,
 		Password: config.AuthToken,
 	})
 
+	// Init appended client
+	appendedClient := appendedGo.New(config.AppenedToken, config.AppenedURL)
+
+	r := mux.NewRouter()
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			log.Fatalf("Error decoding request body:\n%v", err)
+		}
+
+		bodyMap, err := url.ParseQuery(string(body))
+		if err != nil {
+			log.Fatalf("Error converting body to map:\n%v", err)
+		}
+
+		// Get the income message and phone number of user
+		incomingMsg := bodyMap["Body"][0]
+		phoneNumber := bodyMap["From"][0]
+
+		// Ensure it is the one whitelisted number
+		if phoneNumber != config.ClientNumber {
+			logger.Info("Incoming text from invalid number" + phoneNumber)
+			return
+		}
+
+		// Create response to message
+		msg, inputErr := messageResponse(incomingMsg, appendedClient)
+		if inputErr != nil {
+			if smsErr := sendSMS(inputErr.Error(), config, twilioClient); smsErr != nil {
+				logger.Error(smsErr)
+			}
+			logger.Info("Error in message: " + inputErr.Error())
+			return
+		}
+
+		if err = sendSMS(msg, config, twilioClient); err != nil {
+			logger.Error(err)
+		} else {
+			logger.Info("Replied to SMS")
+		}
+	})
+	logger.Info("Listening on port 8080")
+	if err = http.ListenAndServe(":8080", r); err != nil {
+		log.Fatalf("Error starting on server on ':8080':\n%v\n", err)
+	}
+}
+
+func sendSMS(msg string, config Config, twilioClient *twilio.RestClient) error {
 	params := &openapi.CreateMessageParams{}
 	params.SetTo(config.ClientNumber)
 	params.SetFrom(config.TwilioNumber)
-	params.SetBody("Hello from Go!")
+	params.SetBody(msg)
 
-	resp, err := client.ApiV2010.CreateMessage(params)
+	_, err := twilioClient.ApiV2010.CreateMessage(params)
 	if err != nil {
-		logger.Error(err)
-	} else {
-		logger.Info("Message Sid: " + *resp.Sid)
+		return err
 	}
+	return nil
+}
+
+func messageResponse(msg string, client *appendedGo.Client) (string, error) {
+	words := strings.Split(strings.TrimSpace(msg), " ")
+	if len(words) == 0 {
+		return "", errors.New("Empty text message received")
+	}
+
+	cmd := strings.ToLower(words[0])
+
+	// TODO: Find a tidier way to do this
+	if len(words) == 1 {
+		if cmd == "h" {
+			msg := "h: this message"
+			msg += "\nlf: list folios"
+			msg += "\ncf <folioName>: create folio"
+			msg += "\nln <folioName>: list notes in folio"
+			msg += "\na <folioName> <msg>: append note to folio"
+
+			return msg, nil
+
+		} else if cmd == "lf" {
+			folioNames, err := client.GetFolios()
+			if err != nil {
+				return "", err
+			}
+			return strings.Join(folioNames, "\n"), nil
+		}
+	} else if len(words) == 2 {
+		folioName := words[1]
+		if cmd == "cf" {
+			// create folio
+			if err := client.CreateFolio(folioName); err != nil {
+				return "", err
+			} else {
+				return "Created folio with name " + folioName, nil
+			}
+		} else if cmd == "ln" {
+			notes, err := client.GetNotes(folioName)
+			if err != nil {
+				return "", err
+			}
+			return strings.Join(notes, "\n"), nil
+		}
+	} else {
+		folioName := words[1]
+		note := strings.Join(words[2:], " ")
+		if cmd == "a" {
+			if err := client.AddNote(folioName, note); err != nil {
+				return "", err
+			}
+			return "Appended", nil
+		}
+	}
+
+	return "", errors.New("Invalid command")
 }
