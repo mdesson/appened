@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/appened/HTTPLogger"
@@ -57,7 +58,7 @@ func initailizeRoutes(router *mux.Router, logger *HTTPLogger.Logger, folios map[
 
 		var notes []string
 		for _, note := range folio.Notes {
-			notes = append(notes, note.Text)
+			notes = append(notes, note.ListString())
 		}
 		jsonResponse, err := json.Marshal(notes)
 		if err != nil {
@@ -99,6 +100,36 @@ func initailizeRoutes(router *mux.Router, logger *HTTPLogger.Logger, folios map[
 		logger.InfoHTTP(r, http.StatusCreated)
 		logger.Info(fmt.Sprintf("Created note in folio %v\n", name))
 	}).Methods("POST")
+
+	// GET folios/{name}/{index}/done Toggle done on note
+	router.HandleFunc("/folios/{name}/{index}/done{slash:/?}", func(w http.ResponseWriter, r *http.Request) {
+		name := mux.Vars(r)["name"]
+		indexString := mux.Vars(r)["index"]
+
+		index, err := strconv.Atoi(indexString)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			logger.ApplicationError(r, err)
+			return
+		}
+
+		folio := folios[name]
+		if folio == nil {
+			w.WriteHeader(http.StatusNotFound)
+			logger.InfoHTTP(r, http.StatusNotFound)
+			return
+		}
+
+		if err = folio.ToggleDone(index); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			logger.Error(err)
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		logger.InfoHTTP(r, http.StatusCreated)
+		logger.Info(fmt.Sprintf("Toggled done on note %v in folio %v\n", index, name))
+	}).Methods("GET")
 
 	// POST folios/ Create a folio
 	router.HandleFunc("/folios{slash:/?}", func(w http.ResponseWriter, r *http.Request) {

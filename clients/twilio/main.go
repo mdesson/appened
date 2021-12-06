@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/appened/HTTPLogger"
@@ -127,8 +128,9 @@ func messageResponse(msg string, client *appendedGo.Client) (string, error) {
 			msg := "h: this message"
 			msg += "\nlf: list folios"
 			msg += "\ncf <folioName>: create folio"
-			msg += "\nd <folioName>: delete folio"
+			msg += "\ndf <folioName>: delete folio"
 			msg += "\nln <folioName>: list notes in folio"
+			msg += "\ndn <folioName> <number>: Toggle done on note at number"
 			msg += "\na <folioName> <msg>: append note to folio"
 
 			return msg, nil
@@ -159,7 +161,7 @@ func messageResponse(msg string, client *appendedGo.Client) (string, error) {
 				return "No notes yet!", nil
 			}
 			return strings.Join(notes, "\n"), nil
-		} else if cmd == "d" {
+		} else if cmd == "df" {
 			if err := client.DeleteFolio(folioName); err != nil {
 				return "", err
 			}
@@ -173,6 +175,16 @@ func messageResponse(msg string, client *appendedGo.Client) (string, error) {
 				return "", err
 			}
 			return "Appended", nil
+		}
+		if cmd == "dn" && len(words) == 3 {
+			index, err := strconv.Atoi(words[2])
+			if err != nil {
+				return "", err
+			}
+			if err := client.ToggleDone(folioName, index-1); err != nil {
+				return "", err
+			}
+			return "Toggled done", nil
 		}
 	}
 

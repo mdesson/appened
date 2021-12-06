@@ -2,6 +2,7 @@ package note
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -130,6 +131,37 @@ func (f *Folio) Append(note string) error {
 		return err
 	}
 	f.Notes = append(f.Notes, n)
+
+	return nil
+}
+
+func (f *Folio) ToggleDone(i int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if i >= len(f.Notes) {
+		return errors.New("Index too big")
+	}
+	if i < 0 {
+		return errors.New("Index must be positive")
+	}
+
+	file, err := os.OpenFile(f.filename, os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	file.Truncate(0)
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	for _, n := range f.Notes {
+		if err = writer.Write(n.csvLine()); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

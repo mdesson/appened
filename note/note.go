@@ -49,3 +49,11 @@ func (n Note) csvLine() []string {
 		strconv.FormatInt(n.DateEdited, 10),
 	}
 }
+
+func (n Note) ListString() string {
+	s := fmt.Sprintf("%v. %v", n.index+1, n.Text)
+	if n.Done {
+		s += " ✅"
+	}
+	return s
+}

@@ -3,6 +3,7 @@ package appendedGo
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -73,6 +74,16 @@ func (c *Client) GetNotes(folioName string) ([]string, error) {
 
 func (c *Client) AddNote(folioName string, note string) error {
 	_, err := c.makeRequest("POST", "/folios/"+folioName, map[string]string{"note": note})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) ToggleDone(folioName string, index int) error {
+	path := fmt.Sprintf("/folios/%v/%v/done", folioName, index)
+	_, err := c.makeRequest("GET", path, nil)
 	if err != nil {
 		return err
 	}
