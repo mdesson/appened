@@ -16,8 +16,8 @@ type Client struct {
 	url    string
 }
 
+// Create a new Appended client
 func New(token string, baseURL string) *Client {
-
 	client := Client{}
 	client.token = token
 	client.client = &http.Client{}
@@ -31,6 +31,7 @@ func New(token string, baseURL string) *Client {
 	return &client
 }
 
+// CreateFolio creates a new folio
 func (c *Client) CreateFolio(folioName string) error {
 	_, err := c.makeRequest("POST", "/folios", map[string]string{"name": folioName})
 	if err != nil {
@@ -40,6 +41,7 @@ func (c *Client) CreateFolio(folioName string) error {
 	return nil
 }
 
+// GetFolios will return the names of all folios
 func (c *Client) GetFolios() ([]string, error) {
 	body, err := c.makeRequest("GET", "/folios", nil)
 	if err != nil {
@@ -56,6 +58,7 @@ func (c *Client) GetFolios() ([]string, error) {
 	return folioNames, nil
 }
 
+// GetNotes will return a slice of all notes' text for a given folio
 func (c *Client) GetNotes(folioName string) ([]string, error) {
 	body, err := c.makeRequest("GET", "/folios/"+folioName, nil)
 	if err != nil {
@@ -72,6 +75,7 @@ func (c *Client) GetNotes(folioName string) ([]string, error) {
 	return notes, nil
 }
 
+// AddNote will add a note to a folio
 func (c *Client) AddNote(folioName string, note string) error {
 	_, err := c.makeRequest("POST", "/folios/"+folioName, map[string]string{"note": note})
 	if err != nil {
@@ -81,6 +85,18 @@ func (c *Client) AddNote(folioName string, note string) error {
 	return nil
 }
 
+// EditNote will overwrite the text of a note
+func (c *Client) EditNote(folioName string, index int, note string) error {
+	path := fmt.Sprintf("/folios/%v/%v", folioName, index)
+	_, err := c.makeRequest("PUT", path, map[string]string{"note": note})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ToggleDone will toggle the done property on a note
 func (c *Client) ToggleDone(folioName string, index int) error {
 	path := fmt.Sprintf("/folios/%v/%v/done", folioName, index)
 	_, err := c.makeRequest("GET", path, nil)
@@ -91,6 +107,7 @@ func (c *Client) ToggleDone(folioName string, index int) error {
 	return nil
 }
 
+// DeleteFolio will delete a folio permanently
 func (c *Client) DeleteFolio(folioName string) error {
 	_, err := c.makeRequest("DELETE", "/folios/"+folioName, nil)
 	if err != nil {

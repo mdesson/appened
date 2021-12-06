@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -130,6 +131,7 @@ func messageResponse(msg string, client *appendedGo.Client) (string, error) {
 			msg += "\ncf <folioName>: create folio"
 			msg += "\ndf <folioName>: delete folio"
 			msg += "\nln <folioName>: list notes in folio"
+			msg += "\nlna <folioName>: list all notes in folio, including done"
 			msg += "\ndn <folioName> <number>: Toggle done on note at number"
 			msg += "\na <folioName> <msg>: append note to folio"
 
@@ -152,6 +154,23 @@ func messageResponse(msg string, client *appendedGo.Client) (string, error) {
 				return "Created folio with name " + folioName, nil
 			}
 		} else if cmd == "ln" {
+			notes, err := client.GetNotes(folioName)
+			if err != nil {
+				return "", err
+			}
+
+			if len(notes) == 0 {
+				return "No notes yet!", nil
+			}
+
+			// Remove trailing ✅
+			re := regexp.MustCompile("^.* ✅$")
+			for i, note := range notes {
+				notes[i] = re.ReplaceAllString(note, "")
+			}
+
+			return strings.Join(notes, "\n"), nil
+		} else if cmd == "lna" {
 			notes, err := client.GetNotes(folioName)
 			if err != nil {
 				return "", err

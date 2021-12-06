@@ -100,6 +100,43 @@ func initailizeRoutes(router *mux.Router, logger *HTTPLogger.Logger, folios map[
 		logger.Info(fmt.Sprintf("Created note in folio %v\n", name))
 	}).Methods("POST")
 
+	// PUT folios/{name}/i Append a note to a folio
+	router.HandleFunc("/folios/{name}{slash:/?}", func(w http.ResponseWriter, r *http.Request) {
+		name := mux.Vars(r)["name"]
+		indexString := mux.Vars(r)["index"]
+
+		index, err := strconv.Atoi(indexString)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			logger.ApplicationError(r, err)
+			return
+		}
+
+		if err := r.ParseForm(); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			logger.ApplicationError(r, err)
+			return
+		}
+
+		folio := folios[name]
+		if folio == nil {
+			w.WriteHeader(http.StatusNotFound)
+			logger.InfoHTTP(r, http.StatusNotFound)
+			return
+		}
+
+		err = folio.Edit(index, r.FormValue("note"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			logger.ApplicationError(r, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		logger.InfoHTTP(r, http.StatusCreated)
+		logger.Info(fmt.Sprintf("Edited note %v in folio %v\n", index, name))
+	}).Methods("PUT")
+
 	// GET folios/{name}/{index}/done Toggle done on note
 	router.HandleFunc("/folios/{name}/{index}/done{slash:/?}", func(w http.ResponseWriter, r *http.Request) {
 		name := mux.Vars(r)["name"]

@@ -135,16 +135,19 @@ func (f *Folio) Append(note string) error {
 	return nil
 }
 
-func (f *Folio) ToggleDone(i int) error {
+// ToggleDone will toggle Done between true and false
+func (f *Folio) ToggleDone(index int) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	if i >= len(f.Notes) {
+	if index >= len(f.Notes) {
 		return errors.New("Index too big")
 	}
-	if i < 0 {
+	if index < 0 {
 		return errors.New("Index must be positive")
 	}
+
+	f.Notes[index].ToggleDone()
 
 	file, err := os.OpenFile(f.filename, os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
@@ -166,6 +169,40 @@ func (f *Folio) ToggleDone(i int) error {
 	return nil
 }
 
+// Edit edits the contents of a note
+func (f *Folio) Edit(index int, text string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if index >= len(f.Notes) {
+		return errors.New("Index too big")
+	}
+	if index < 0 {
+		return errors.New("Index must be positive")
+	}
+
+	f.Notes[index].Text = text
+
+	file, err := os.OpenFile(f.filename, os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	file.Truncate(0)
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	for _, n := range f.Notes {
+		if err = writer.Write(n.csvLine()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Delete will remove the folio's csv from disk
 func (f *Folio) Delete() error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
