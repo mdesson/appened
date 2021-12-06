@@ -43,12 +43,12 @@ func main() {
 }
 
 // Intialize routes
-func initailizeRoutes(router *mux.Router, logger *HTTPLogger.Logger, folios []*note.Folio) {
+func initailizeRoutes(router *mux.Router, logger *HTTPLogger.Logger, folios map[string]*note.Folio) {
 	// GET folios/{name}: Get a folio's notes in an array of strings
 	router.HandleFunc("/folios/{name}{slash:/?}", func(w http.ResponseWriter, r *http.Request) {
 		name := mux.Vars(r)["name"]
 
-		folio := findFolio(name, folios)
+		folio := folios[name]
 		if folio == nil {
 			w.WriteHeader(http.StatusNotFound)
 			logger.InfoHTTP(r, http.StatusNotFound)
@@ -81,7 +81,7 @@ func initailizeRoutes(router *mux.Router, logger *HTTPLogger.Logger, folios []*n
 			return
 		}
 
-		folio := findFolio(name, folios)
+		folio := folios[name]
 		if folio == nil {
 			w.WriteHeader(http.StatusNotFound)
 			logger.InfoHTTP(r, http.StatusNotFound)
@@ -139,7 +139,7 @@ func initailizeRoutes(router *mux.Router, logger *HTTPLogger.Logger, folios []*n
 			logger.ApplicationError(r, err)
 			return
 		}
-		folios = append(folios, folio)
+		folios[name] = folio
 
 		w.WriteHeader(http.StatusCreated)
 		logger.InfoHTTP(r, http.StatusCreated)
@@ -166,7 +166,32 @@ func initailizeRoutes(router *mux.Router, logger *HTTPLogger.Logger, folios []*n
 		logger.InfoHTTP(r, http.StatusOK)
 	}).Methods("GET")
 
-	// Manually reset 404 middleware will not fire. Custom 404 also ensures logging
+	// DELETE folios/{name}
+	router.HandleFunc("/folios/{name}{slash:/?}", func(w http.ResponseWriter, r *http.Request) {
+		name := mux.Vars(r)["name"]
+
+		folio, ok := folios[name]
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			logger.InfoHTTP(r, http.StatusNotFound)
+			return
+		}
+
+		if err := folio.Delete(); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			logger.ApplicationError(r, err)
+			return
+
+		}
+
+		delete(folios, name)
+
+		w.WriteHeader(http.StatusOK)
+		logger.InfoHTTP(r, http.StatusOK)
+		logger.Info(fmt.Sprintf("Deleted folio %v\n", name))
+	}).Methods("DELETE")
+
+	// Manually reset 404 middleware or it will not fire. Custom 404 also ensures logging
 	router.NotFoundHandler = router.NewRoute().HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		logger.InfoHTTP(r, http.StatusNotFound)
@@ -199,14 +224,4 @@ func initailizeMiddleware(router *mux.Router, logger *HTTPLogger.Logger) {
 			}
 		})
 	})
-}
-
-// Helper for getting a folio. Runs in O(n) time, converting to a map would obviate need for this
-func findFolio(name string, folios []*note.Folio) *note.Folio {
-	for _, f := range folios {
-		if name == f.Name {
-			return f
-		}
-	}
-	return nil
 }

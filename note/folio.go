@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -18,7 +19,7 @@ type Folio struct {
 }
 
 // LoadFolios reads in folios from `data/`
-func LoadFolios() ([]*Folio, error) {
+func LoadFolios() (map[string]*Folio, error) {
 	// Get file names
 	files, err := os.ReadDir("../data/")
 	if err != nil {
@@ -26,7 +27,7 @@ func LoadFolios() ([]*Folio, error) {
 	}
 
 	// Init folios
-	folios := []*Folio{}
+	folios := map[string]*Folio{}
 
 	// Fetch each folio
 	for _, file := range files {
@@ -35,7 +36,8 @@ func LoadFolios() ([]*Folio, error) {
 		if err != nil {
 			return nil, err
 		}
-		folios = append(folios, folio)
+		name := strings.Split(filename, ".")[0]
+		folios[name] = folio
 	}
 
 	return folios, nil
@@ -128,6 +130,17 @@ func (f *Folio) Append(note string) error {
 		return err
 	}
 	f.Notes = append(f.Notes, n)
+
+	return nil
+}
+
+func (f *Folio) Delete() error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if err := os.Remove(f.filename); err != nil {
+		return err
+	}
 
 	return nil
 }

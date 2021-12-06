@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -153,7 +154,22 @@ func messageResponse(msg string, client *appendedGo.Client) (string, error) {
 			if err != nil {
 				return "", err
 			}
-			return strings.Join(notes, "\n"), nil
+
+			if len(notes) == 0 {
+				return "No notes yet!", nil
+			}
+
+			numberedNotes := make([]string, len(notes))
+			for i, note := range notes {
+				numberedNotes = append(numberedNotes, fmt.Sprintf("%v. %v", i+1, note))
+			}
+
+			return strings.Join(numberedNotes, "\n"), nil
+		} else if cmd == "d" {
+			if err := client.DeleteFolio(folioName); err != nil {
+				return "", err
+			}
+			return "Deleted folio", nil
 		}
 	} else {
 		folioName := words[1]

@@ -80,6 +80,15 @@ func (c *Client) AddNote(folioName string, note string) error {
 	return nil
 }
 
+func (c *Client) DeleteFolio(folioName string) error {
+	_, err := c.makeRequest("DELETE", "/folios/"+folioName, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c *Client) makeRequest(method string, route string, data map[string]string) ([]byte, error) {
 	postData := url.Values{}
 	for key, val := range data {
