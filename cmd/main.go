@@ -14,7 +14,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// TODO: Add marking done
 // TODO: Add editing note
 // TODO: Add surfacing a note
 
