@@ -128,6 +128,7 @@ func messageResponse(msg string, client *appendedGo.Client) (string, error) {
 			msg := "h: this message"
 			msg += "\nlf: list folios"
 			msg += "\ncf <folioName>: create folio"
+			msg += "\nd <folioName>: delete folio"
 			msg += "\nln <folioName>: list notes in folio"
 			msg += "\na <folioName> <msg>: append note to folio"
 
