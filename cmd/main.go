@@ -14,7 +14,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// TODO: Add readme
 // TODO: Add surfacing a note
 
 func main() {
