@@ -14,6 +14,11 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// TODO: Run go mod tidy one last time
+// TODO: Fix bug when there's no folios to list
+// TODO: Fix bug with newline for done notes
+// TODO: Add view of only completed notes
+// TODO: Add readme
 // TODO: Add surfacing a note
 
 func main() {
@@ -271,7 +276,7 @@ func initailizeMiddleware(router *mux.Router, logger *HTTPLogger.Logger) {
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Get app token
-			token := os.Getenv("APPENDED_AUTH_TOKEN")
+			token := os.Getenv("APPENED_AUTH_TOKEN")
 
 			// Get client token
 			reqToken := r.Header.Get("Authorization")
