@@ -14,9 +14,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// TODO: Run go mod tidy one last time
-// TODO: Fix bug when there's no folios to list
-// TODO: Fix bug with newline for done notes
 // TODO: Add view of only completed notes
 // TODO: Add readme
 // TODO: Add surfacing a note

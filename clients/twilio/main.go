@@ -142,6 +142,9 @@ func messageResponse(msg string, client *appendedGo.Client) (string, error) {
 			if err != nil {
 				return "", err
 			}
+			if len(folioNames) == 0 {
+				return "No folios yet!", nil
+			}
 			return strings.Join(folioNames, "\n"), nil
 		}
 	} else if len(words) == 2 {
@@ -164,12 +167,14 @@ func messageResponse(msg string, client *appendedGo.Client) (string, error) {
 			}
 
 			// Remove trailing ✅
-			re := regexp.MustCompile("^.* ✅$")
-			for i, note := range notes {
-				notes[i] = re.ReplaceAllString(note, "")
+			filteredNotes := make([]string, 0)
+			for _, note := range notes {
+				if !strings.Contains(note, "✅") {
+					filteredNotes = append(filteredNotes, note)
+				}
 			}
 
-			return strings.Join(notes, "\n"), nil
+			return strings.Join(filteredNotes, "\n"), nil
 		} else if cmd == "lna" {
 			notes, err := client.GetNotes(folioName)
 			if err != nil {
