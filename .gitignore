@@ -17,4 +17,4 @@
 # Project files
 data/
 config.json
-auth.sh
+.env
