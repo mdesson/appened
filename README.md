@@ -26,11 +26,11 @@ Note that `run` will stop and remove any running container of that name.
 
 This library includes a simple library that wraps the REST API. 
 
-Note that it is set up such that only one phone number is whitelisted. It will only work with one phone number.
-
 ## Twilio Client
 
 There is a simple twilio client to allow interacting with 'Appened over SMS.
+
+Note that it is set up such that only one phone number is whitelisted. It will only work with one phone number.
 
 ### Running The Client
 
