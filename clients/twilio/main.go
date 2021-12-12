@@ -131,6 +131,7 @@ func messageResponse(msg string, client *appendedGo.Client) (string, error) {
 			msg += "\ndf <folioName>: delete folio"
 			msg += "\nln <folioName>: list notes in folio"
 			msg += "\nlna <folioName>: list all notes in folio, including done"
+			msg += "\nlnd <folioName>: list all done notes in folio"
 			msg += "\ndn <folioName> <number>: Toggle done on note at number"
 			msg += "\na <folioName> <msg>: append note to folio"
 
@@ -161,16 +162,33 @@ func messageResponse(msg string, client *appendedGo.Client) (string, error) {
 				return "", err
 			}
 
-			if len(notes) == 0 {
-				return "No notes yet!", nil
-			}
-
-			// Remove trailing ✅
 			filteredNotes := make([]string, 0)
 			for _, note := range notes {
 				if !strings.Contains(note, "✅") {
 					filteredNotes = append(filteredNotes, note)
 				}
+
+			}
+			if len(filteredNotes) == 0 {
+				return "No unfinished notes!", nil
+			}
+
+			return strings.Join(filteredNotes, "\n"), nil
+		} else if cmd == "lnd" {
+			notes, err := client.GetNotes(folioName)
+			if err != nil {
+				return "", err
+			}
+
+			filteredNotes := make([]string, 0)
+			for _, note := range notes {
+				if strings.Contains(note, "✅") {
+					filteredNotes = append(filteredNotes, note)
+				}
+			}
+
+			if len(filteredNotes) == 0 {
+				return "Nothing finished yet!", nil
 			}
 
 			return strings.Join(filteredNotes, "\n"), nil
